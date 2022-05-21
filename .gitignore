@@ -1,1 +1,3 @@
-/target
+# Compiled files and executables.
+debug/
+target/
