@@ -3,6 +3,7 @@
 use super::Price;
 
 /// Side represents the side of the order: bid or ask.
+#[derive(Debug, Clone, Copy)]
 pub enum Side {
     Bid,
     Ask,
@@ -45,6 +46,12 @@ impl<'a> Order<'a> {
     pub fn price(&self) -> Price {
         match self {
             Order::Limit(order) => order.price,
+        }
+    }
+
+    pub fn side(&self) -> Side {
+        match self {
+            Order::Limit(order) => order.side,
         }
     }
 }

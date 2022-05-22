@@ -2,7 +2,7 @@
 
 use crate::level::Level;
 use crate::market::Index;
-use crate::order::Order;
+use crate::order::{Order, Side};
 use crate::trade::Trade;
 use crate::Price;
 
@@ -29,13 +29,25 @@ impl<'a> Book<'a> {
     }
 
     /// Add an order to the book.
-    pub fn add(&mut self, _order: Order<'a>) {
-        unimplemented!()
+    pub fn add(&mut self, order: Order<'a>) {
+        let price = order.price();
+        let level = match order.side() {
+            Side::Bid => self.bids.entry(price).or_insert_with(|| Level::new(price)),
+            Side::Ask => self
+                .asks
+                .entry(Reverse(price))
+                .or_insert_with(|| Level::new(price)),
+        };
+        level.add(order);
     }
 
     /// Cancel an given order, removing it from the order book immediately.
-    pub fn remove(&mut self, _index: &Index<'a>) -> Option<Order<'a>> {
-        unimplemented!()
+    pub fn remove(&mut self, index: &Index<'a>) -> Option<Order<'a>> {
+        let level = match index.side {
+            Side::Bid => self.bids.get_mut(&index.price)?,
+            Side::Ask => self.asks.get_mut(&Reverse(index.price))?,
+        };
+        level.remove(index.user_id, index.user_order_id)
     }
 
     /// Execute all trades in this order book.

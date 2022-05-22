@@ -2,7 +2,7 @@
 //! for a given set of securities.
 
 use crate::book::Book;
-use crate::order::Order;
+use crate::order::{Order, Side};
 use crate::trade::Trade;
 use crate::Price;
 
@@ -14,10 +14,11 @@ use std::collections::HashMap;
 /// this information with this structure.
 #[allow(dead_code)]
 pub struct Index<'a> {
-    user_id: u64,
-    user_order_id: u64,
-    symbol: &'a str,
-    price: Price,
+    pub user_id: u64,
+    pub user_order_id: u64,
+    pub symbol: &'a str,
+    pub price: Price,
+    pub side: Side,
 }
 
 impl<'a> Index<'a> {
@@ -27,6 +28,7 @@ impl<'a> Index<'a> {
             user_order_id: order.user_order_id(),
             symbol: order.symbol(),
             price: order.price(),
+            side: order.side(),
         }
     }
 
@@ -60,7 +62,7 @@ impl<'a> Market<'a> {
     }
 
     /// Cancel an order given by order ids.
-    pub fn cancel(&mut self, user_id: u64, user_order_id: u64) -> Order<'a> {
+    pub fn cancel(&mut self, user_id: u64, user_order_id: u64) -> Option<Order<'a>> {
         // Find the index of the order to cancel, find the book and remove
         // the order from the book.
         let index = self
@@ -68,7 +70,7 @@ impl<'a> Market<'a> {
             .get(&(user_id, user_order_id))
             .expect("Index not found");
         let book = self.books.get_mut(index.symbol).expect("Book not found");
-        let removed_order = book.remove(index).expect("Order not found");
+        let removed_order = book.remove(index);
         // We don't want to remove a book when its empty. It is an unsual situation
         // to have no orders for a specific security at all in the first place, and
         // even if it happens, we probably will have a new order for it soon. Therefore,
