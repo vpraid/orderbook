@@ -9,12 +9,11 @@ impl Matcher for FIFOMatcher {
             "Order price does not match level price"
         );
         let mut trades = Vec::new();
-        while let Some(mut other) = level.orders_mut().pop_back() {
-            let trade = order.trade(&mut other);
+        while let Some(other) = level.orders_mut().back_mut() {
+            let trade = order.trade(other);
             trades.push(trade);
-            // Resting orders must reenter the level from the front like new orders
-            if other.is_valid() {
-                level.add(other);
+            if !other.is_valid() {
+                level.orders_mut().pop_back();
             }
             if !order.is_valid() {
                 break;
@@ -33,8 +32,8 @@ mod tests {
 
     fn make_test_level() -> Level<'static> {
         let orders = [
-            Order::with_ids(2, 101).limit_order(Side::Ask, "AAPL", 1.0, 5),
-            Order::with_ids(1, 102).limit_order(Side::Ask, "AAPL", 1.0, 10),
+            Order::with_ids(1, 101).limit_order(Side::Ask, "AAPL", 1.0, 5),
+            Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 10),
             Order::with_ids(3, 103).limit_order(Side::Ask, "AAPL", 1.0, 7),
         ];
         let mut level = Level::new(1.0.into());
@@ -57,14 +56,14 @@ mod tests {
         assert_eq!(trades[0].quantity, 2);
         assert_eq!(trades[0].user_id_buy, 4);
         assert_eq!(trades[0].user_order_id_buy, 51);
-        assert_eq!(trades[0].user_id_sell, 2);
+        assert_eq!(trades[0].user_id_sell, 1);
         assert_eq!(trades[0].user_order_id_sell, 101);
 
         // Remaning orders are correct
         assert_eq!(level.orders().len(), 3);
-        assert_eq!(level.orders()[0].quantity(), 3);
-        assert_eq!(level.orders()[1].quantity(), 7);
-        assert_eq!(level.orders()[2].quantity(), 10);
+        assert_eq!(level.orders()[0].quantity(), 7);
+        assert_eq!(level.orders()[1].quantity(), 10);
+        assert_eq!(level.orders()[2].quantity(), 3);
     }
 
     #[test]
@@ -80,19 +79,19 @@ mod tests {
         assert_eq!(trades[0].quantity, 5);
         assert_eq!(trades[0].user_id_buy, 4);
         assert_eq!(trades[0].user_order_id_buy, 51);
-        assert_eq!(trades[0].user_id_sell, 2);
+        assert_eq!(trades[0].user_id_sell, 1);
         assert_eq!(trades[0].user_order_id_sell, 101);
         assert_eq!(trades[1].price, Price::from(1.0));
         assert_eq!(trades[1].quantity, 1);
         assert_eq!(trades[1].user_id_buy, 4);
         assert_eq!(trades[1].user_order_id_buy, 51);
-        assert_eq!(trades[1].user_id_sell, 1);
+        assert_eq!(trades[1].user_id_sell, 2);
         assert_eq!(trades[1].user_order_id_sell, 102);
 
         // Remaining orders are correct
         assert_eq!(level.orders().len(), 2);
-        assert_eq!(level.orders()[0].quantity(), 9);
-        assert_eq!(level.orders()[1].quantity(), 7);
+        assert_eq!(level.orders()[0].quantity(), 7);
+        assert_eq!(level.orders()[1].quantity(), 9);
         assert!(!bid_order.is_valid());
     }
 
@@ -109,13 +108,13 @@ mod tests {
         assert_eq!(trades[0].quantity, 5);
         assert_eq!(trades[0].user_id_buy, 4);
         assert_eq!(trades[0].user_order_id_buy, 51);
-        assert_eq!(trades[0].user_id_sell, 2);
+        assert_eq!(trades[0].user_id_sell, 1);
         assert_eq!(trades[0].user_order_id_sell, 101);
         assert_eq!(trades[1].price, Price::from(1.0));
         assert_eq!(trades[1].quantity, 10);
         assert_eq!(trades[1].user_id_buy, 4);
         assert_eq!(trades[1].user_order_id_buy, 51);
-        assert_eq!(trades[1].user_id_sell, 1);
+        assert_eq!(trades[1].user_id_sell, 2);
         assert_eq!(trades[1].user_order_id_sell, 102);
 
         // Remaining orders are correct
@@ -137,13 +136,13 @@ mod tests {
         assert_eq!(trades[0].quantity, 5);
         assert_eq!(trades[0].user_id_buy, 4);
         assert_eq!(trades[0].user_order_id_buy, 51);
-        assert_eq!(trades[0].user_id_sell, 2);
+        assert_eq!(trades[0].user_id_sell, 1);
         assert_eq!(trades[0].user_order_id_sell, 101);
         assert_eq!(trades[1].price, Price::from(1.0));
         assert_eq!(trades[1].quantity, 10);
         assert_eq!(trades[1].user_id_buy, 4);
         assert_eq!(trades[1].user_order_id_buy, 51);
-        assert_eq!(trades[1].user_id_sell, 1);
+        assert_eq!(trades[1].user_id_sell, 2);
         assert_eq!(trades[1].user_order_id_sell, 102);
         assert_eq!(trades[2].price, Price::from(1.0));
         assert_eq!(trades[2].quantity, 3);
@@ -171,13 +170,13 @@ mod tests {
         assert_eq!(trades[0].quantity, 5);
         assert_eq!(trades[0].user_id_buy, 4);
         assert_eq!(trades[0].user_order_id_buy, 51);
-        assert_eq!(trades[0].user_id_sell, 2);
+        assert_eq!(trades[0].user_id_sell, 1);
         assert_eq!(trades[0].user_order_id_sell, 101);
         assert_eq!(trades[1].price, Price::from(1.0));
         assert_eq!(trades[1].quantity, 10);
         assert_eq!(trades[1].user_id_buy, 4);
         assert_eq!(trades[1].user_order_id_buy, 51);
-        assert_eq!(trades[1].user_id_sell, 1);
+        assert_eq!(trades[1].user_id_sell, 2);
         assert_eq!(trades[1].user_order_id_sell, 102);
         assert_eq!(trades[2].price, Price::from(1.0));
         assert_eq!(trades[2].quantity, 7);
@@ -204,13 +203,13 @@ mod tests {
         assert_eq!(trades[0].quantity, 5);
         assert_eq!(trades[0].user_id_buy, 4);
         assert_eq!(trades[0].user_order_id_buy, 51);
-        assert_eq!(trades[0].user_id_sell, 2);
+        assert_eq!(trades[0].user_id_sell, 1);
         assert_eq!(trades[0].user_order_id_sell, 101);
         assert_eq!(trades[1].price, Price::from(1.0));
         assert_eq!(trades[1].quantity, 10);
         assert_eq!(trades[1].user_id_buy, 4);
         assert_eq!(trades[1].user_order_id_buy, 51);
-        assert_eq!(trades[1].user_id_sell, 1);
+        assert_eq!(trades[1].user_id_sell, 2);
         assert_eq!(trades[1].user_order_id_sell, 102);
         assert_eq!(trades[2].price, Price::from(1.0));
         assert_eq!(trades[2].quantity, 7);
