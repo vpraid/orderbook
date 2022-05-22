@@ -1,6 +1,6 @@
 use super::*;
 
-struct FIFOMatcher;
+pub struct FIFOMatcher;
 
 impl Matcher for FIFOMatcher {
     fn match_order<'a>(&mut self, order: &mut Order<'a>, level: &mut Level<'a>) -> Vec<Trade<'a>> {

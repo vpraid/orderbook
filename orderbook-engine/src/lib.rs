@@ -11,6 +11,7 @@ pub type Price = OrderedFloat<f64>;
 
 pub mod prelude {
     pub use super::market::Market;
+    pub use super::matcher::*;
     pub use super::order::{Order, Side};
     pub use super::trade::Trade;
 }

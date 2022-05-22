@@ -7,7 +7,7 @@ fn main() {
         Order::with_ids(2, 103).limit_order(Side::Ask, "AAPL", 50.0, 14),
     ];
 
-    let mut market = Market::new();
+    let mut market = Market::new(FIFOMatcher);
     for order in orders {
         market.add(order);
     }

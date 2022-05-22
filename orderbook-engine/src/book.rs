@@ -2,6 +2,7 @@
 
 use crate::level::Level;
 use crate::market::Index;
+use crate::matcher::Matcher;
 use crate::order::{Order, Side};
 use crate::trade::Trade;
 use crate::Price;
@@ -51,8 +52,17 @@ impl<'a> Book<'a> {
     }
 
     /// Execute all trades in this order book.
-    pub fn execute(&mut self) -> Vec<Trade<'a>> {
-        unimplemented!()
+    pub fn execute<M: Matcher>(&mut self, matcher: &mut M) -> Vec<Trade<'a>> {
+        let top_bids = self.bids.iter_mut().next_back().map(|pl| pl.1);
+        let top_asks = self.asks.iter_mut().next_back().map(|pl| pl.1);
+        match top_bids.zip(top_asks) {
+            Some((bids, asks)) => {
+                let mut trades = Vec::new();
+                trades.append(&mut bids.match_to(asks, matcher));
+                trades
+            }
+            None => Vec::new(),
+        }
     }
 }
 

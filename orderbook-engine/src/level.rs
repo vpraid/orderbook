@@ -1,6 +1,7 @@
 //! The module contains the definition of a price level in an order book.
 use crate::matcher::Matcher;
 use crate::order::Order;
+use crate::trade::Trade;
 use crate::Price;
 
 use std::collections::VecDeque;
@@ -38,8 +39,17 @@ impl<'a> Level<'a> {
         None
     }
 
-    pub fn execute<M: Matcher>(&mut self, _order: Order<'a>, _matcher: M) {
-        unimplemented!()
+    pub fn match_to<M: Matcher>(&mut self, other: &mut Self, matcher: &mut M) -> Vec<Trade<'a>> {
+        debug_assert!(self.price == other.price);
+        let mut trades = Vec::new();
+        while let Some(mut order) = self.orders.pop_back() {
+            trades.append(&mut matcher.match_order(&mut order, other));
+            if order.is_valid() {
+                self.orders.push_front(order);
+                break;
+            }
+        }
+        trades
     }
 
     /// Get the price of this level.

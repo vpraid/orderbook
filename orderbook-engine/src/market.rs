@@ -2,6 +2,7 @@
 //! for a given set of securities.
 
 use crate::book::Book;
+use crate::matcher::Matcher;
 use crate::order::{Order, Side};
 use crate::trade::Trade;
 use crate::Price;
@@ -40,17 +41,19 @@ impl<'a> Index<'a> {
 /// Market is a collection of order books for a given set of securities. It also contains a map
 /// of all index structs for all orders currently on the market.
 #[allow(dead_code)]
-pub struct Market<'a> {
+pub struct Market<'a, M> {
     books: HashMap<&'a str, Book<'a>>,
     indices: HashMap<(u64, u64), Index<'a>>,
+    matcher: M,
 }
 
-impl<'a> Market<'a> {
+impl<'a, M: Matcher> Market<'a, M> {
     /// Create a new market.
-    pub fn new() -> Self {
+    pub fn new(matcher: M) -> Self {
         Self {
             books: HashMap::new(),
             indices: HashMap::new(),
+            matcher,
         }
     }
 
@@ -83,12 +86,10 @@ impl<'a> Market<'a> {
     /// Execute trades on the market, updating the order books and removing orders that were
     /// successfully traded.
     pub fn execute(&mut self) -> Vec<Trade<'a>> {
-        self.books.values_mut().flat_map(Book::execute).collect()
-    }
-}
-
-impl Default for Market<'_> {
-    fn default() -> Self {
-        Self::new()
+        let matcher = &mut self.matcher;
+        self.books
+            .values_mut()
+            .flat_map(|book| book.execute(matcher))
+            .collect()
     }
 }
