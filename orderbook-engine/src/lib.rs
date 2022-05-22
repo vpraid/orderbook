@@ -3,6 +3,7 @@ use ordered_float::OrderedFloat;
 mod book;
 mod level;
 mod market;
+mod matcher;
 mod order;
 mod trade;
 

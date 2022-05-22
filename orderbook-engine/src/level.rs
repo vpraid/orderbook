@@ -1,4 +1,5 @@
 //! The module contains the definition of a price level in an order book.
+use crate::matcher::Matcher;
 use crate::order::Order;
 use crate::Price;
 
@@ -35,5 +36,22 @@ impl<'a> Level<'a> {
             }
         }
         None
+    }
+
+    pub fn execute<M: Matcher>(&mut self, _order: Order<'a>, _matcher: M) {
+        unimplemented!()
+    }
+
+    /// Get the price of this level.
+    pub fn price(&self) -> Price {
+        self.price
+    }
+
+    pub fn orders(&self) -> &VecDeque<Order<'a>> {
+        &self.orders
+    }
+
+    pub fn orders_mut(&mut self) -> &mut VecDeque<Order<'a>> {
+        &mut self.orders
     }
 }

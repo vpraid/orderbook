@@ -12,6 +12,7 @@ pub enum Side {
 
 /// Order enum represents all possible order types that appear on the market. At present,
 /// only limit orders are supported.
+#[derive(Debug)]
 pub enum Order<'a> {
     Limit(LimitOrder<'a>),
     // TODO: add market orders and possibly other order types
@@ -111,6 +112,7 @@ impl OrderBuilder {
 /// a security at a specific price or better.  If the side is 'bid', the price represents the maximum
 /// price that a buyer is willing to pay for a share of stock or other security. If the side is 'ask',
 /// the price represents the minimum price that a seller is willing to take for that same security.
+#[derive(Debug)]
 pub struct LimitOrder<'a> {
     pub user_id: u64,
     pub user_order_id: u64,
