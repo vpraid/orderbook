@@ -1,7 +1,9 @@
 //! This module contains the definition of an order book - the primary structure for trading on the market.
 
 use crate::level::Level;
+use crate::market::Index;
 use crate::order::Order;
+use crate::trade::Trade;
 use crate::Price;
 
 use std::cmp::Reverse;
@@ -32,12 +34,12 @@ impl<'a> Book<'a> {
     }
 
     /// Cancel an given order, removing it from the order book immediately.
-    pub fn remove(&mut self, _order: &Order<'a>) {
+    pub fn remove(&mut self, _index: &Index<'a>) -> Option<Order<'a>> {
         unimplemented!()
     }
 
     /// Execute all trades in this order book.
-    pub fn execute(&mut self) {
+    pub fn execute(&mut self) -> Vec<Trade<'a>> {
         unimplemented!()
     }
 }

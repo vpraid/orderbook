@@ -15,9 +15,37 @@ pub enum Order<'a> {
     // TODO: add market orders and possibly other order types
 }
 
-impl Order<'_> {
+impl<'a> Order<'a> {
+    /// Start building an order with the given user and order ids.
     pub fn with_ids(user_id: u64, user_order_id: u64) -> OrderBuilder {
         OrderBuilder::new(user_id, user_order_id)
+    }
+
+    /// Get the user id of the order.
+    pub fn user_id(&self) -> u64 {
+        match self {
+            Order::Limit(order) => order.user_id,
+        }
+    }
+
+    /// Get the user order id of the order.
+    pub fn user_order_id(&self) -> u64 {
+        match self {
+            Order::Limit(order) => order.user_order_id,
+        }
+    }
+
+    /// Get the order symbol.
+    pub fn symbol(&self) -> &'a str {
+        match self {
+            Order::Limit(order) => order.symbol,
+        }
+    }
+
+    pub fn price(&self) -> Price {
+        match self {
+            Order::Limit(order) => order.price,
+        }
     }
 }
 
