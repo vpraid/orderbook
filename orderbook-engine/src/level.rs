@@ -23,12 +23,17 @@ impl<'a> Level<'a> {
     }
 
     /// Add an order to the level.
-    pub fn add(&mut self, _order: Order<'a>) {
-        unimplemented!()
+    pub fn add(&mut self, order: Order<'a>) {
+        self.orders.push_front(order);
     }
 
     /// Cancel an order given by order ids.
-    pub fn remove(&mut self, _user_id: u64, _user_order_id: u64) -> Option<Order<'a>> {
-        unimplemented!()
+    pub fn remove(&mut self, user_id: u64, user_order_id: u64) -> Option<Order<'a>> {
+        for (idx, order) in self.orders.iter().enumerate() {
+            if order.user_id() == user_id && order.user_order_id() == user_order_id {
+                return self.orders.remove(idx);
+            }
+        }
+        None
     }
 }
