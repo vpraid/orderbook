@@ -66,17 +66,17 @@ impl<'a> Order<'a> {
         }
     }
 
-    /// Check if this order is still valid, that is, if the quantitity is not zero.
-    pub fn is_valid(&self) -> bool {
-        self.quantity() > 0
+    /// Check if this order is done, that is, if the quantitity is zero.
+    pub fn is_done(&self) -> bool {
+        self.quantity() == 0
     }
 
-    pub fn trade(&mut self, other: &mut Self) -> Trade<'a> {
+    pub fn match_to(&mut self, other: &mut Self) -> Trade<'a> {
         // This function will probably change significantly when new types of orders are introduced.
         // For now we just stick to the simplest possible implementation.
         match self {
             Order::Limit(order) => match other {
-                Order::Limit(other_order) => order.trade(other_order),
+                Order::Limit(other_order) => order.match_to(other_order),
             },
         }
     }
@@ -123,37 +123,27 @@ pub struct LimitOrder<'a> {
 }
 
 impl<'a> LimitOrder<'a> {
-    pub fn trade(&mut self, other: &mut Self) -> Trade<'a> {
-        debug_assert!(self.side != other.side, "Cannot trade with the same side");
-        debug_assert!(self.symbol == other.symbol, "Trade symbols don't match");
-        debug_assert!(self.price >= other.price, "Trade prices don't match");
-        let trade_quantity = self.quantity.min(other.quantity);
-        self.quantity -= trade_quantity;
-        other.quantity -= trade_quantity;
-        let (user_id_buy, user_id_sell) = self.user_ids(other);
-        let (user_order_id_buy, user_order_id_sell) = self.user_order_ids(other);
+    pub fn match_to(&mut self, other: &mut Self) -> Trade<'a> {
+        let (bid, ask) = match (self.side, other.side) {
+            (Side::Bid, Side::Ask) => (self, other),
+            (Side::Ask, Side::Bid) => (other, self),
+            _ => panic!("Cannot trade with on the same side"),
+        };
+        debug_assert!(bid.symbol == ask.symbol, "Trade symbols don't match");
+        debug_assert!(bid.price >= ask.price, "Bid must be greater than ask");
+
+        let trade_quantity = bid.quantity.min(ask.quantity);
+        bid.quantity -= trade_quantity;
+        ask.quantity -= trade_quantity;
+
         Trade {
-            user_id_buy,
-            user_order_id_buy,
-            user_id_sell,
-            user_order_id_sell,
-            symbol: self.symbol,
-            price: self.price,
+            user_id_buy: bid.user_id,
+            user_order_id_buy: bid.user_order_id,
+            user_id_sell: ask.user_id,
+            user_order_id_sell: ask.user_order_id,
+            symbol: bid.symbol,
+            price: ask.price,
             quantity: trade_quantity,
-        }
-    }
-
-    fn user_ids(&self, other: &Self) -> (u64, u64) {
-        match self.side {
-            Side::Bid => (self.user_id, other.user_id),
-            Side::Ask => (other.user_id, self.user_id),
-        }
-    }
-
-    fn user_order_ids(&self, other: &Self) -> (u64, u64) {
-        match self.side {
-            Side::Bid => (self.user_order_id, other.user_order_id),
-            Side::Ask => (other.user_order_id, self.user_order_id),
         }
     }
 }
@@ -166,7 +156,7 @@ mod tests {
     fn test_equal_trade_quantity() {
         let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
         let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 10);
-        let trade = bid_order.trade(&mut ask_order);
+        let trade = bid_order.match_to(&mut ask_order);
         assert_eq!(trade.quantity, 10);
         assert_eq!(bid_order.quantity(), 0);
         assert_eq!(ask_order.quantity(), 0);
@@ -176,7 +166,7 @@ mod tests {
     fn test_bid_quantity_higher() {
         let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
         let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 7);
-        let trade = bid_order.trade(&mut ask_order);
+        let trade = bid_order.match_to(&mut ask_order);
         assert_eq!(trade.quantity, 7);
         assert_eq!(bid_order.quantity(), 3);
         assert_eq!(ask_order.quantity(), 0);
@@ -186,7 +176,7 @@ mod tests {
     fn test_bid_quantity_lower() {
         let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 7);
         let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 10);
-        let trade = bid_order.trade(&mut ask_order);
+        let trade = bid_order.match_to(&mut ask_order);
         assert_eq!(trade.quantity, 7);
         assert_eq!(bid_order.quantity(), 0);
         assert_eq!(ask_order.quantity(), 3);
@@ -197,15 +187,23 @@ mod tests {
     fn test_different_symbols() {
         let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
         let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "MSFT", 1.0, 10);
-        bid_order.trade(&mut ask_order);
+        bid_order.match_to(&mut ask_order);
     }
 
     #[test]
     #[should_panic]
-    fn test_different_price_levels() {
+    fn test_bid_price_lower() {
         let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
         let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 2.0, 10);
-        bid_order.trade(&mut ask_order);
+        bid_order.match_to(&mut ask_order);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ask_price_higher() {
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Ask, "AAPL", 2.0, 10);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Bid, "AAPL", 1.0, 10);
+        bid_order.match_to(&mut ask_order);
     }
 
     #[test]
@@ -213,6 +211,6 @@ mod tests {
     fn tests_same_sides() {
         let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
         let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Bid, "AAPL", 1.0, 10);
-        bid_order.trade(&mut ask_order);
+        bid_order.match_to(&mut ask_order);
     }
 }

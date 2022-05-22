@@ -58,10 +58,17 @@ impl<'a, M: Matcher> Market<'a, M> {
     }
 
     /// Add an order to the market.
-    pub fn add(&mut self, order: Order<'a>) {
+    pub fn add(&mut self, order: Order<'a>) -> Vec<Trade<'a>> {
         let index = Index::from_order(&order);
-        self.books.entry(order.symbol()).or_default().add(order);
-        self.indices.insert(index.ids(), index);
+        let (order_persists, trades) = self
+            .books
+            .entry(order.symbol())
+            .or_default()
+            .add(order, &mut self.matcher);
+        if order_persists {
+            self.indices.insert(index.ids(), index);
+        }
+        trades
     }
 
     /// Cancel an order given by order ids.
@@ -81,15 +88,5 @@ impl<'a, M: Matcher> Market<'a, M> {
         let ids = index.ids();
         self.indices.remove(&ids).expect("Index not found");
         removed_order
-    }
-
-    /// Execute trades on the market, updating the order books and removing orders that were
-    /// successfully traded.
-    pub fn execute(&mut self) -> Vec<Trade<'a>> {
-        let matcher = &mut self.matcher;
-        self.books
-            .values_mut()
-            .flat_map(|book| book.execute(matcher))
-            .collect()
     }
 }

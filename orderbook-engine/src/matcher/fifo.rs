@@ -4,18 +4,13 @@ pub struct FIFOMatcher;
 
 impl Matcher for FIFOMatcher {
     fn match_order<'a>(&mut self, order: &mut Order<'a>, level: &mut Level<'a>) -> Vec<Trade<'a>> {
-        debug_assert!(
-            order.price() == level.price(),
-            "Order price does not match level price"
-        );
         let mut trades = Vec::new();
         while let Some(other) = level.orders_mut().back_mut() {
-            let trade = order.trade(other);
-            trades.push(trade);
-            if !other.is_valid() {
+            trades.push(order.match_to(other));
+            if other.is_done() {
                 level.orders_mut().pop_back();
             }
-            if !order.is_valid() {
+            if order.is_done() {
                 break;
             }
         }
@@ -36,7 +31,7 @@ mod tests {
             Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 10),
             Order::with_ids(3, 103).limit_order(Side::Ask, "AAPL", 1.0, 7),
         ];
-        let mut level = Level::new(1.0.into());
+        let mut level = Level::new(1.0.into(), Side::Ask);
         for order in orders {
             level.add(order);
         }
@@ -92,7 +87,7 @@ mod tests {
         assert_eq!(level.orders().len(), 2);
         assert_eq!(level.orders()[0].quantity(), 7);
         assert_eq!(level.orders()[1].quantity(), 9);
-        assert!(!bid_order.is_valid());
+        assert!(bid_order.is_done());
     }
 
     #[test]
@@ -120,7 +115,7 @@ mod tests {
         // Remaining orders are correct
         assert_eq!(level.orders().len(), 1);
         assert_eq!(level.orders()[0].quantity(), 7);
-        assert!(!bid_order.is_valid());
+        assert!(bid_order.is_done());
     }
 
     #[test]
@@ -154,7 +149,7 @@ mod tests {
         // Remaining orders are correct
         assert_eq!(level.orders().len(), 1);
         assert_eq!(level.orders()[0].quantity(), 4);
-        assert!(!bid_order.is_valid());
+        assert!(bid_order.is_done());
     }
 
     #[test]
@@ -187,7 +182,7 @@ mod tests {
 
         // Remaining orders are correct
         assert_eq!(level.orders().len(), 0);
-        assert!(!bid_order.is_valid());
+        assert!(bid_order.is_done());
     }
 
     #[test]
