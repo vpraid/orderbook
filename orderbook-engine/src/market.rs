@@ -88,4 +88,12 @@ impl<M: Matcher> Market<M> {
         self.indices.remove(&ids).expect("Index not found");
         removed_order
     }
+
+    /// Clear the market of all orders.
+    pub fn clear(&mut self) {
+        for book in self.books.values_mut() {
+            book.clear();
+        }
+        self.indices.clear();
+    }
 }

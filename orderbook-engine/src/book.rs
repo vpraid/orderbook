@@ -82,6 +82,12 @@ impl Book {
         }
         trades
     }
+
+    /// Clear this order book of all orders.
+    pub fn clear(&mut self) {
+        self.bids.clear();
+        self.asks.clear();
+    }
 }
 
 impl Default for Book {
