@@ -10,6 +10,15 @@ pub enum Side {
     Ask,
 }
 
+impl std::fmt::Display for Side {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Side::Bid => write!(f, "B"),
+            Side::Ask => write!(f, "S"),
+        }
+    }
+}
+
 /// Order enum represents all possible order types that appear on the market. At present,
 /// only limit orders are supported.
 #[derive(Debug)]

@@ -12,8 +12,7 @@ pub struct Level {
     orders: VecDeque<Order>,
 }
 
-#[allow(dead_code)]
-impl<'a> Level {
+impl Level {
     /// Create a new price level.
     pub fn new(price: Price, side: Side) -> Self {
         Self {
@@ -58,5 +57,9 @@ impl<'a> Level {
     /// Return true if this level doesn't contain any orders.
     pub fn is_empty(&self) -> bool {
         self.orders.is_empty()
+    }
+
+    pub fn top(&self) -> Option<&Order> {
+        self.orders.back()
     }
 }

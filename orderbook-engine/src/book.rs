@@ -88,6 +88,23 @@ impl Book {
         self.bids.clear();
         self.asks.clear();
     }
+
+    pub fn top_of_book(&self, side: Side) -> (Price, u64) {
+        let order = match side {
+            Side::Bid => self
+                .bids
+                .iter()
+                .next_back()
+                .and_then(|(_, level)| level.top()),
+            Side::Ask => self
+                .asks
+                .iter()
+                .next_back()
+                .and_then(|(_, level)| level.top()),
+        }
+        .expect("Order book is empty");
+        (order.price(), order.quantity())
+    }
 }
 
 impl Default for Book {

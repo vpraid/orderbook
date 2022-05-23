@@ -3,7 +3,7 @@ use super::*;
 pub struct FIFOMatcher;
 
 impl Matcher for FIFOMatcher {
-    fn match_order<'a>(&mut self, order: &mut Order, level: &mut Level) -> Vec<Trade> {
+    fn match_order(&mut self, order: &mut Order, level: &mut Level) -> Vec<Trade> {
         let mut trades = Vec::new();
         while let Some(other) = level.orders_mut().back_mut() {
             trades.push(order.match_to(other));

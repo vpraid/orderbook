@@ -13,6 +13,7 @@ use std::collections::HashMap;
 /// to cancel an order, but know only its ids. Since we need the symbol to choose a correct order
 /// book and a price to choose a price level in the book to cancnel an order, we keep track of
 /// this information with this structure.
+#[derive(Debug, Clone, Copy)]
 pub struct Index {
     pub user_id: u64,
     pub user_order_id: u64,
@@ -39,7 +40,6 @@ impl Index {
 
 /// Market is a collection of order books for a given set of securities. It also contains a map
 /// of all index structs for all orders currently on the market.
-#[allow(dead_code)]
 pub struct Market<M> {
     books: HashMap<Symbol, Book>,
     indices: HashMap<(u64, u64), Index>,
@@ -67,6 +67,9 @@ impl<M: Matcher> Market<M> {
         if order_persists {
             self.indices.insert(index.ids(), index);
         }
+        self.log_order(&index);
+        self.log_top_of_book(&index);
+        self.log_trades(&trades);
         trades
     }
 
@@ -95,5 +98,31 @@ impl<M: Matcher> Market<M> {
             book.clear();
         }
         self.indices.clear();
+    }
+
+    pub fn log_order(&self, index: &Index) {
+        println!("A, {}, {}", index.user_id, index.user_order_id,);
+    }
+
+    pub fn log_top_of_book(&self, index: &Index) {
+        let book = self.books.get(&index.symbol).expect("Book not found");
+        let (price, quantity) = book.top_of_book(index.side);
+        if index.price == price {
+            println!("B, {}, {}, {}", index.side, price, quantity);
+        }
+    }
+
+    pub fn log_trades(&self, trades: &[Trade]) {
+        for trade in trades {
+            println!(
+                "T, {}, {}, {}, {}, {}, {}",
+                trade.user_id_buy,
+                trade.user_order_id_buy,
+                trade.user_id_sell,
+                trade.user_order_id_sell,
+                trade.price.0 as u64,
+                trade.quantity
+            );
+        }
     }
 }
