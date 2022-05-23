@@ -11,15 +11,18 @@ pub async fn run(mut rx: mpsc::Receiver<Command>) {
         match command {
             Command::New(order) => {
                 let order = limit_order(order, &mut si);
+                println!("Adding limit order...");
                 market.add(order);
             }
             Command::Cancel(CancelOrder {
                 user_id,
                 user_order_id,
             }) => {
+                println!("Canceling order...");
                 market.cancel(user_id, user_order_id);
             }
             Command::Flush => {
+                println!("Clearing the market...");
                 market.clear();
             }
         }

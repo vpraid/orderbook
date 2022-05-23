@@ -294,6 +294,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "futures",
+ "orderbook-common",
  "serde_json",
  "tokio",
  "tokio-serde",

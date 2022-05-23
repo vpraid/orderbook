@@ -1,6 +1,7 @@
 use orderbook_common::{Command, SOCKET};
 
 use futures::TryStreamExt;
+use serde_json::Value;
 use tokio::io::AsyncRead;
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
@@ -16,6 +17,7 @@ async fn main() {
     tokio::spawn(async move {
         server::run(rx).await;
     });
+    let _ = std::fs::remove_file(SOCKET);
     let listener = UnixListener::bind(SOCKET).expect("Failed to bind the unix socket");
     loop {
         match listener.accept().await {
@@ -34,7 +36,7 @@ async fn main() {
 async fn read_frames<T: AsyncRead + Unpin + Send + 'static>(io: T, tx: mpsc::Sender<Command>) {
     let transport = FramedRead::new(io, LengthDelimitedCodec::new());
     let mut frames = SymmetricallyFramed::new(transport, SymmetricalJson::<Command>::default());
-    while let Some(msg) = frames.try_next().await.unwrap() {
-        tx.send(msg).await.unwrap();
+    while let Some(command) = frames.try_next().await.unwrap() {
+        tx.send(command).await.unwrap();
     }
 }
