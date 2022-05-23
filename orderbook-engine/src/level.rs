@@ -6,15 +6,14 @@ use std::collections::VecDeque;
 
 /// Level represents a price level in an order book. The orders in a level are
 /// placed in a deque for efficient processing by matching algorithms.
-#[allow(dead_code)]
-pub struct Level<'a> {
+pub struct Level {
     price: Price,
     side: Side,
-    orders: VecDeque<Order<'a>>,
+    orders: VecDeque<Order>,
 }
 
 #[allow(dead_code)]
-impl<'a> Level<'a> {
+impl<'a> Level {
     /// Create a new price level.
     pub fn new(price: Price, side: Side) -> Self {
         Self {
@@ -25,7 +24,7 @@ impl<'a> Level<'a> {
     }
 
     /// Add an order to the level.
-    pub fn add(&mut self, order: Order<'a>) {
+    pub fn add(&mut self, order: Order) {
         debug_assert!(
             order.side() == self.side,
             "Order side does not match level side"
@@ -34,7 +33,7 @@ impl<'a> Level<'a> {
     }
 
     /// Cancel an order given by order ids.
-    pub fn remove(&mut self, user_id: u64, user_order_id: u64) -> Option<Order<'a>> {
+    pub fn remove(&mut self, user_id: u64, user_order_id: u64) -> Option<Order> {
         for (idx, order) in self.orders.iter().enumerate() {
             if order.user_id() == user_id && order.user_order_id() == user_order_id {
                 return self.orders.remove(idx);
@@ -48,11 +47,11 @@ impl<'a> Level<'a> {
         self.price
     }
 
-    pub fn orders(&self) -> &VecDeque<Order<'a>> {
+    pub fn orders(&self) -> &VecDeque<Order> {
         &self.orders
     }
 
-    pub fn orders_mut(&mut self) -> &mut VecDeque<Order<'a>> {
+    pub fn orders_mut(&mut self) -> &mut VecDeque<Order> {
         &mut self.orders
     }
 

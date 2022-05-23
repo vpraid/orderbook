@@ -9,17 +9,17 @@ use crate::Price;
 
 use std::collections::BTreeMap;
 
-type LevelMap<'a> = BTreeMap<Price, Level<'a>>;
+type LevelMap = BTreeMap<Price, Level>;
 
 /// Book represents an order book. It is implemented as a collection of levels for bid and for ask
 /// orders separately. When a match must be done, the top level from the bids collection and the
 /// bottom level from the asks collection are matched according to a matching algorithm.
-pub struct Book<'a> {
-    bids: LevelMap<'a>,
-    asks: LevelMap<'a>,
+pub struct Book {
+    bids: LevelMap,
+    asks: LevelMap,
 }
 
-impl<'a> Book<'a> {
+impl Book {
     /// Create a new order book.
     pub fn new() -> Self {
         Self {
@@ -29,11 +29,7 @@ impl<'a> Book<'a> {
     }
 
     /// Add an order to the book.
-    pub fn add<M: Matcher>(
-        &mut self,
-        mut order: Order<'a>,
-        matcher: &mut M,
-    ) -> (bool, Vec<Trade<'a>>) {
+    pub fn add<M: Matcher>(&mut self, mut order: Order, matcher: &mut M) -> (bool, Vec<Trade>) {
         let trades = self.try_execute(&mut order, matcher);
         if order.is_done() {
             return (false, trades);
@@ -54,7 +50,7 @@ impl<'a> Book<'a> {
     }
 
     /// Cancel an given order, removing it from the order book immediately.
-    pub fn remove(&mut self, index: &Index<'a>) -> Option<Order<'a>> {
+    pub fn remove(&mut self, index: &Index) -> Option<Order> {
         let level = match index.side {
             Side::Bid => self.bids.get_mut(&index.price)?,
             Side::Ask => self.asks.get_mut(&-index.price)?,
@@ -63,11 +59,7 @@ impl<'a> Book<'a> {
     }
 
     /// Try executing the order.
-    fn try_execute<M: Matcher>(
-        &mut self,
-        order: &mut Order<'a>,
-        matcher: &mut M,
-    ) -> Vec<Trade<'a>> {
+    fn try_execute<M: Matcher>(&mut self, order: &mut Order, matcher: &mut M) -> Vec<Trade> {
         let levels = match order.side() {
             Side::Bid => &mut self.asks,
             Side::Ask => &mut self.bids,
@@ -92,7 +84,7 @@ impl<'a> Book<'a> {
     }
 }
 
-impl Default for Book<'_> {
+impl Default for Book {
     fn default() -> Self {
         Self::new()
     }
@@ -103,8 +95,9 @@ mod tests {
     use super::*;
     use crate::matcher::FIFOMatcher;
     use crate::order::{Order, Side};
+    use string_interner::StringInterner;
 
-    fn book_from_orders<'a>(orders: impl IntoIterator<Item = Order<'a>>) -> Book<'a> {
+    fn book_from_orders(orders: impl IntoIterator<Item = Order>) -> Book {
         let mut book = Book::new();
         for order in orders {
             book.add(order, &mut FIFOMatcher);
@@ -114,12 +107,14 @@ mod tests {
 
     #[test]
     fn test_cross_market_orders_from_bid() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let ask_orders = [
-            Order::with_ids(10, 110).limit_order(Side::Ask, "AAPL", 1.0, 5),
-            Order::with_ids(11, 111).limit_order(Side::Ask, "AAPL", 2.0, 5),
+            Order::with_ids(10, 110).limit_order(Side::Ask, aapl, 1.0, 5),
+            Order::with_ids(11, 111).limit_order(Side::Ask, aapl, 2.0, 5),
         ];
         let mut book = book_from_orders(ask_orders);
-        let order = Order::with_ids(2, 52).limit_order(Side::Bid, "AAPL", 2.0, 7);
+        let order = Order::with_ids(2, 52).limit_order(Side::Bid, aapl, 2.0, 7);
         let trades = book.add(order, &mut FIFOMatcher).1;
 
         // Trades are correct
@@ -145,12 +140,14 @@ mod tests {
 
     #[test]
     fn test_cross_market_orders_from_ask() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let bid_orders = [
-            Order::with_ids(10, 110).limit_order(Side::Bid, "AAPL", 1.0, 5),
-            Order::with_ids(11, 111).limit_order(Side::Bid, "AAPL", 2.0, 5),
+            Order::with_ids(10, 110).limit_order(Side::Bid, aapl, 1.0, 5),
+            Order::with_ids(11, 111).limit_order(Side::Bid, aapl, 2.0, 5),
         ];
         let mut book = book_from_orders(bid_orders);
-        let order = Order::with_ids(2, 52).limit_order(Side::Ask, "AAPL", 1.0, 7);
+        let order = Order::with_ids(2, 52).limit_order(Side::Ask, aapl, 1.0, 7);
         let trades = book.add(order, &mut FIFOMatcher).1;
 
         // Trades are correct
