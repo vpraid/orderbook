@@ -1,0 +1,9 @@
+[package]
+authors = ["Valerii Praid <valerii.praid@gmail.com>"]
+name = "orderbook-common"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
