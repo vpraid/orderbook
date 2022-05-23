@@ -1,7 +1,6 @@
 use orderbook_common::{Command, SOCKET};
 
 use futures::TryStreamExt;
-use serde_json::Value;
 use tokio::io::AsyncRead;
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
