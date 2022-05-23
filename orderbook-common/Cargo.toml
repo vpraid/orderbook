@@ -1,9 +1,9 @@
 [package]
 authors = ["Valerii Praid <valerii.praid@gmail.com>"]
-name = "orderbook-engine"
+name = "orderbook-common"
 version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-ordered-float = "3.0"
-string-interner = "0.14.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

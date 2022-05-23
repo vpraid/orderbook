@@ -1,0 +1,14 @@
+[package]
+authors = ["Valerii Praid <valerii.praid@gmail.com>"]
+name = "orderbook-client"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+tokio = { version = "1.18", features = ["full"] }
+tokio-serde = { version ="0.8", features = ["json"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+anyhow = "1.0"
+serde_json = "1.0"
+futures = "0.3"
+orderbook-common = { path = "../orderbook-common" }

@@ -3,7 +3,7 @@ use super::*;
 pub struct FIFOMatcher;
 
 impl Matcher for FIFOMatcher {
-    fn match_order<'a>(&mut self, order: &mut Order<'a>, level: &mut Level<'a>) -> Vec<Trade<'a>> {
+    fn match_order(&mut self, order: &mut Order, level: &mut Level) -> Vec<Trade> {
         let mut trades = Vec::new();
         while let Some(other) = level.orders_mut().back_mut() {
             trades.push(order.match_to(other));
@@ -23,13 +23,14 @@ mod tests {
     use super::*;
     use crate::level::Level;
     use crate::order::{Order, Side};
-    use crate::Price;
+    use crate::{Price, Symbol};
+    use string_interner::StringInterner;
 
-    fn make_test_level() -> Level<'static> {
+    fn make_test_level(symbol: Symbol) -> Level {
         let orders = [
-            Order::with_ids(1, 101).limit_order(Side::Ask, "AAPL", 1.0, 5),
-            Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 10),
-            Order::with_ids(3, 103).limit_order(Side::Ask, "AAPL", 1.0, 7),
+            Order::with_ids(1, 101).limit_order(Side::Ask, symbol, 1.0, 5),
+            Order::with_ids(2, 102).limit_order(Side::Ask, symbol, 1.0, 10),
+            Order::with_ids(3, 103).limit_order(Side::Ask, symbol, 1.0, 7),
         ];
         let mut level = Level::new(1.0.into(), Side::Ask);
         for order in orders {
@@ -40,9 +41,11 @@ mod tests {
 
     #[test]
     fn test_very_small_order() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let mut matcher = FIFOMatcher;
-        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, "AAPL", 1.0, 2);
-        let mut level = make_test_level();
+        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, aapl, 1.0, 2);
+        let mut level = make_test_level(aapl);
         let trades = matcher.match_order(&mut bid_order, &mut level);
 
         // Trades are correct
@@ -63,9 +66,11 @@ mod tests {
 
     #[test]
     fn test_small_order() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let mut matcher = FIFOMatcher;
-        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, "AAPL", 1.0, 6);
-        let mut level = make_test_level();
+        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, aapl, 1.0, 6);
+        let mut level = make_test_level(aapl);
         let trades = matcher.match_order(&mut bid_order, &mut level);
 
         // Trades are correct
@@ -92,9 +97,11 @@ mod tests {
 
     #[test]
     fn test_medium_order() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let mut matcher = FIFOMatcher;
-        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, "AAPL", 1.0, 15);
-        let mut level = make_test_level();
+        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, aapl, 1.0, 15);
+        let mut level = make_test_level(aapl);
         let trades = matcher.match_order(&mut bid_order, &mut level);
 
         // Trades are correct
@@ -120,9 +127,11 @@ mod tests {
 
     #[test]
     fn test_large_order() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let mut matcher = FIFOMatcher;
-        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, "AAPL", 1.0, 18);
-        let mut level = make_test_level();
+        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, aapl, 1.0, 18);
+        let mut level = make_test_level(aapl);
         let trades = matcher.match_order(&mut bid_order, &mut level);
 
         // Trades are correct
@@ -154,9 +163,11 @@ mod tests {
 
     #[test]
     fn test_very_large_order() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let mut matcher = FIFOMatcher;
-        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, "AAPL", 1.0, 22);
-        let mut level = make_test_level();
+        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, aapl, 1.0, 22);
+        let mut level = make_test_level(aapl);
         let trades = matcher.match_order(&mut bid_order, &mut level);
 
         // Trades are correct
@@ -187,9 +198,11 @@ mod tests {
 
     #[test]
     fn test_gigantic_order() {
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
         let mut matcher = FIFOMatcher;
-        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, "AAPL", 1.0, 25);
-        let mut level = make_test_level();
+        let mut bid_order = Order::with_ids(4, 51).limit_order(Side::Bid, aapl, 1.0, 25);
+        let mut level = make_test_level(aapl);
         let trades = matcher.match_order(&mut bid_order, &mut level);
 
         // Trades are correct

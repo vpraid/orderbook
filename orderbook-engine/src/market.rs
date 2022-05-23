@@ -5,7 +5,7 @@ use crate::book::Book;
 use crate::matcher::Matcher;
 use crate::order::{Order, Side};
 use crate::trade::Trade;
-use crate::Price;
+use crate::{Price, Symbol};
 
 use std::collections::HashMap;
 
@@ -13,17 +13,17 @@ use std::collections::HashMap;
 /// to cancel an order, but know only its ids. Since we need the symbol to choose a correct order
 /// book and a price to choose a price level in the book to cancnel an order, we keep track of
 /// this information with this structure.
-#[allow(dead_code)]
-pub struct Index<'a> {
+#[derive(Debug, Clone, Copy)]
+pub struct Index {
     pub user_id: u64,
     pub user_order_id: u64,
-    pub symbol: &'a str,
+    pub symbol: Symbol,
     pub price: Price,
     pub side: Side,
 }
 
-impl<'a> Index<'a> {
-    fn from_order(order: &Order<'a>) -> Self {
+impl Index {
+    fn from_order(order: &Order) -> Self {
         Self {
             user_id: order.user_id(),
             user_order_id: order.user_order_id(),
@@ -40,14 +40,13 @@ impl<'a> Index<'a> {
 
 /// Market is a collection of order books for a given set of securities. It also contains a map
 /// of all index structs for all orders currently on the market.
-#[allow(dead_code)]
-pub struct Market<'a, M> {
-    books: HashMap<&'a str, Book<'a>>,
-    indices: HashMap<(u64, u64), Index<'a>>,
+pub struct Market<M> {
+    books: HashMap<Symbol, Book>,
+    indices: HashMap<(u64, u64), Index>,
     matcher: M,
 }
 
-impl<'a, M: Matcher> Market<'a, M> {
+impl<M: Matcher> Market<M> {
     /// Create a new market.
     pub fn new(matcher: M) -> Self {
         Self {
@@ -58,7 +57,7 @@ impl<'a, M: Matcher> Market<'a, M> {
     }
 
     /// Add an order to the market.
-    pub fn add(&mut self, order: Order<'a>) -> Vec<Trade<'a>> {
+    pub fn add(&mut self, order: Order) -> Vec<Trade> {
         let index = Index::from_order(&order);
         let (order_persists, trades) = self
             .books
@@ -68,18 +67,21 @@ impl<'a, M: Matcher> Market<'a, M> {
         if order_persists {
             self.indices.insert(index.ids(), index);
         }
+        self.log_order(&index);
+        self.log_top_of_book(&index);
+        self.log_trades(&trades);
         trades
     }
 
     /// Cancel an order given by order ids.
-    pub fn cancel(&mut self, user_id: u64, user_order_id: u64) -> Option<Order<'a>> {
+    pub fn cancel(&mut self, user_id: u64, user_order_id: u64) -> Option<Order> {
         // Find the index of the order to cancel, find the book and remove
         // the order from the book.
         let index = self
             .indices
             .get(&(user_id, user_order_id))
             .expect("Index not found");
-        let book = self.books.get_mut(index.symbol).expect("Book not found");
+        let book = self.books.get_mut(&index.symbol).expect("Book not found");
         let removed_order = book.remove(index);
         // We don't want to remove a book when its empty. It is an unsual situation
         // to have no orders for a specific security at all in the first place, and
@@ -88,5 +90,39 @@ impl<'a, M: Matcher> Market<'a, M> {
         let ids = index.ids();
         self.indices.remove(&ids).expect("Index not found");
         removed_order
+    }
+
+    /// Clear the market of all orders.
+    pub fn clear(&mut self) {
+        for book in self.books.values_mut() {
+            book.clear();
+        }
+        self.indices.clear();
+    }
+
+    pub fn log_order(&self, index: &Index) {
+        println!("A, {}, {}", index.user_id, index.user_order_id,);
+    }
+
+    pub fn log_top_of_book(&self, index: &Index) {
+        let book = self.books.get(&index.symbol).expect("Book not found");
+        let (price, quantity) = book.top_of_book(index.side);
+        if index.price == price {
+            println!("B, {}, {}, {}", index.side, price, quantity);
+        }
+    }
+
+    pub fn log_trades(&self, trades: &[Trade]) {
+        for trade in trades {
+            println!(
+                "T, {}, {}, {}, {}, {}, {}",
+                trade.user_id_buy,
+                trade.user_order_id_buy,
+                trade.user_id_sell,
+                trade.user_order_id_sell,
+                trade.price.0 as u64,
+                trade.quantity
+            );
+        }
     }
 }

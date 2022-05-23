@@ -1,2 +1,8 @@
 [workspace]
-members = ["orderbook-engine"]
+members = [
+    "orderbook-engine",
+    "orderbook-server",
+    "orderbook-client",
+    "orderbook-common",
+    ]
+

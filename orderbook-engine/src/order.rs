@@ -1,7 +1,7 @@
 //! This module contains the definition of all order structs that are used in the orderbook engine.
 
 use crate::trade::Trade;
-use crate::Price;
+use crate::{Price, Symbol};
 
 /// Side represents the side of the order: bid or ask.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10,15 +10,24 @@ pub enum Side {
     Ask,
 }
 
+impl std::fmt::Display for Side {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Side::Bid => write!(f, "B"),
+            Side::Ask => write!(f, "S"),
+        }
+    }
+}
+
 /// Order enum represents all possible order types that appear on the market. At present,
 /// only limit orders are supported.
 #[derive(Debug)]
-pub enum Order<'a> {
-    Limit(LimitOrder<'a>),
+pub enum Order {
+    Limit(LimitOrder),
     // TODO: add market orders and possibly other order types
 }
 
-impl<'a> Order<'a> {
+impl Order {
     /// Start building an order with the given user and order ids.
     pub fn with_ids(user_id: u64, user_order_id: u64) -> OrderBuilder {
         OrderBuilder::new(user_id, user_order_id)
@@ -39,7 +48,7 @@ impl<'a> Order<'a> {
     }
 
     /// Get the order symbol.
-    pub fn symbol(&self) -> &'a str {
+    pub fn symbol(&self) -> Symbol {
         match self {
             Order::Limit(order) => order.symbol,
         }
@@ -71,7 +80,7 @@ impl<'a> Order<'a> {
         self.quantity() == 0
     }
 
-    pub fn match_to(&mut self, other: &mut Self) -> Trade<'a> {
+    pub fn match_to(&mut self, other: &mut Self) -> Trade {
         // This function will probably change significantly when new types of orders are introduced.
         // For now we just stick to the simplest possible implementation.
         match self {
@@ -96,7 +105,7 @@ impl OrderBuilder {
         }
     }
 
-    pub fn limit_order(self, side: Side, symbol: &str, price: f64, quantity: u64) -> Order {
+    pub fn limit_order(self, side: Side, symbol: Symbol, price: f64, quantity: u64) -> Order {
         Order::Limit(LimitOrder {
             user_id: self.user_id,
             user_order_id: self.user_order_id,
@@ -113,17 +122,17 @@ impl OrderBuilder {
 /// price that a buyer is willing to pay for a share of stock or other security. If the side is 'ask',
 /// the price represents the minimum price that a seller is willing to take for that same security.
 #[derive(Debug)]
-pub struct LimitOrder<'a> {
+pub struct LimitOrder {
     pub user_id: u64,
     pub user_order_id: u64,
     pub side: Side,
-    pub symbol: &'a str,
+    pub symbol: Symbol,
     pub price: Price,
     pub quantity: u64,
 }
 
-impl<'a> LimitOrder<'a> {
-    pub fn match_to(&mut self, other: &mut Self) -> Trade<'a> {
+impl LimitOrder {
+    pub fn match_to(&mut self, other: &mut Self) -> Trade {
         let (bid, ask) = match (self.side, other.side) {
             (Side::Bid, Side::Ask) => (self, other),
             (Side::Ask, Side::Bid) => (other, self),
@@ -151,11 +160,14 @@ impl<'a> LimitOrder<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use string_interner::StringInterner;
 
     #[test]
     fn test_equal_trade_quantity() {
-        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
-        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 10);
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, aapl, 1.0, 10);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, aapl, 1.0, 10);
         let trade = bid_order.match_to(&mut ask_order);
         assert_eq!(trade.quantity, 10);
         assert_eq!(bid_order.quantity(), 0);
@@ -164,8 +176,10 @@ mod tests {
 
     #[test]
     fn test_bid_quantity_higher() {
-        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
-        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 7);
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, aapl, 1.0, 10);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, aapl, 1.0, 7);
         let trade = bid_order.match_to(&mut ask_order);
         assert_eq!(trade.quantity, 7);
         assert_eq!(bid_order.quantity(), 3);
@@ -174,8 +188,10 @@ mod tests {
 
     #[test]
     fn test_bid_quantity_lower() {
-        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 7);
-        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 1.0, 10);
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, aapl, 1.0, 7);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, aapl, 1.0, 10);
         let trade = bid_order.match_to(&mut ask_order);
         assert_eq!(trade.quantity, 7);
         assert_eq!(bid_order.quantity(), 0);
@@ -185,32 +201,41 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_different_symbols() {
-        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
-        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "MSFT", 1.0, 10);
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
+        let msft = si.get_or_intern_static("MSFT");
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, aapl, 1.0, 10);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, msft, 1.0, 10);
         bid_order.match_to(&mut ask_order);
     }
 
     #[test]
     #[should_panic]
     fn test_bid_price_lower() {
-        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
-        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, "AAPL", 2.0, 10);
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, aapl, 1.0, 10);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Ask, aapl, 2.0, 10);
         bid_order.match_to(&mut ask_order);
     }
 
     #[test]
     #[should_panic]
     fn test_ask_price_higher() {
-        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Ask, "AAPL", 2.0, 10);
-        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Bid, "AAPL", 1.0, 10);
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Ask, aapl, 2.0, 10);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Bid, aapl, 1.0, 10);
         bid_order.match_to(&mut ask_order);
     }
 
     #[test]
     #[should_panic]
     fn tests_same_sides() {
-        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, "AAPL", 1.0, 10);
-        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Bid, "AAPL", 1.0, 10);
+        let mut si = StringInterner::default();
+        let aapl = si.get_or_intern_static("AAPL");
+        let mut bid_order = Order::with_ids(1, 101).limit_order(Side::Bid, aapl, 1.0, 10);
+        let mut ask_order = Order::with_ids(2, 102).limit_order(Side::Bid, aapl, 1.0, 10);
         bid_order.match_to(&mut ask_order);
     }
 }
