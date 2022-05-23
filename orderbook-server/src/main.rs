@@ -1,5 +1,10 @@
-use tokio::io::AsyncReadExt;
-use tokio::net::{UnixListener, UnixStream};
+use futures::TryStreamExt;
+use serde_json::Value;
+use tokio::io::AsyncRead;
+use tokio::net::UnixListener;
+use tokio_serde::formats::SymmetricalJson;
+use tokio_serde::SymmetricallyFramed;
+use tokio_util::codec::{FramedRead, LengthDelimitedCodec};
 
 #[tokio::main]
 async fn main() {
@@ -10,7 +15,7 @@ async fn main() {
             Ok((stream, _)) => {
                 println!("Accepted new connection");
                 tokio::spawn(async move {
-                    process(stream).await;
+                    read_frame(stream).await;
                 });
             }
             Err(e) => eprintln!("connection failed: {}", e),
@@ -18,11 +23,14 @@ async fn main() {
     }
 }
 
-async fn process(mut stream: UnixStream) {
-    let mut buf = [0; 1024];
-    let n = stream
-        .read(&mut buf)
-        .await
-        .expect("Failed to read from stream");
-    println!("{}", String::from_utf8_lossy(&buf[..n]));
+async fn read_frame<T: AsyncRead + Unpin + Send + 'static>(io: T) {
+    let transport = FramedRead::new(io, LengthDelimitedCodec::new());
+    let mut frames = SymmetricallyFramed::new(transport, SymmetricalJson::<Value>::default());
+
+    // Spawn a task that prints all received messages to STDOUT
+    tokio::spawn(async move {
+        while let Some(msg) = frames.try_next().await.unwrap() {
+            println!("GOT: {:?}", msg);
+        }
+    });
 }
